@@ -65,13 +65,14 @@ python -m pytest
 ## Deploy to Azure (Windows `cmd`)
 
 Prerequisites: `az login`, `docker login`. The `^` at line ends continues a command in `cmd`.
+Run these commands in `cmd`, not PowerShell: PowerShell does not expand `%VAR%` (it would use `$env:VAR`).
 
 ### 0. Variables
 
 ```cmd
-set LOCATION=swedencentral
+set LOCATION=norwayeast
 set RG=rg-notes
-set PG=pg-notes-adrivara
+set PG=pg-notes-adrivara-no
 set STORAGE=stnotesadrivara
 set DOCKER_USER=adrivara
 set PG_PASSWORD=ChangeMe2026SomethingLong
@@ -79,10 +80,23 @@ set PG_PASSWORD=ChangeMe2026SomethingLong
 
 Use your own password: at least 16 characters with upper case, lower case and digits only (no symbols, so it is safe inside a URL and in `cmd`). It is typed here, never committed.
 
+Region: the Azure for Students subscription only allows `norwayeast`, `brazilsouth`, `chilecentral`, `francecentral` and `swedencentral`. The PostgreSQL `Standard_B1ms` SKU was not available in `swedencentral` (`SkuNotAvailable`), so the deployment uses `norwayeast`. The server name has a region suffix (`-no`) because a name used in a failed attempt in another region can stay reserved for a while.
+
 ### 1. Resource group
 
 ```cmd
 az group create -n %RG% -l %LOCATION%
+```
+
+### 1b. Register resource providers (once per subscription)
+
+A new subscription fails with `MissingSubscriptionRegistration` until these are registered:
+
+```cmd
+az provider register --namespace Microsoft.DBforPostgreSQL --wait
+az provider register --namespace Microsoft.Storage --wait
+az provider register --namespace Microsoft.App --wait
+az provider register --namespace Microsoft.OperationalInsights --wait
 ```
 
 ### 2. Managed database (takes 5–10 min)
@@ -91,8 +105,11 @@ az group create -n %RG% -l %LOCATION%
 az postgres flexible-server create -g %RG% -n %PG% -l %LOCATION% ^
   --tier Burstable --sku-name Standard_B1ms --storage-size 32 --version 17 ^
   --admin-user notesadmin --admin-password %PG_PASSWORD% ^
-  --database-name notes --public-access 0.0.0.0 --yes
+  --public-access 0.0.0.0 --yes
+az postgres flexible-server db create -g %RG% -s %PG% -n notes
 ```
+
+The database is created with a separate command: in current Azure CLI versions `--database-name` on `flexible-server create` only applies to elastic clusters.
 
 `--public-access 0.0.0.0` allows connections only from Azure services (Container Apps), not from the whole Internet. TLS is required (`sslmode=require`).
 
@@ -100,6 +117,7 @@ az postgres flexible-server create -g %RG% -n %PG% -l %LOCATION% ^
 
 ```cmd
 az storage account create -g %RG% -n %STORAGE% -l %LOCATION% --sku Standard_LRS --kind StorageV2
+az storage account update -g %RG% -n %STORAGE% --min-tls-version TLS1_2
 az storage blob service-properties update --account-name %STORAGE% --auth-mode key ^
   --static-website --index-document index.html
 az storage account show -g %RG% -n %STORAGE% --query primaryEndpoints.web -o tsv
@@ -111,24 +129,30 @@ Copy the URL from the last command:
 set WEB_URL=https://stnotesadrivara.zXX.web.core.windows.net
 ```
 
-### 4. Push the API image
+### 4. API image
+
+The image is published by CI (see [CI/CD](#cicd-github-actions)): every push to `main` that touches `api/` pushes `docker.io/%DOCKER_USER%/notes-api:<commit-sha>`. Take the full SHA of that commit (`git rev-parse HEAD`, or the Actions run) and use it as the tag:
 
 ```cmd
-docker build -t %DOCKER_USER%/notes-api:1.0 --build-arg APP_VERSION=1.0 ./api
-docker push %DOCKER_USER%/notes-api:1.0
+set IMAGE_TAG=<commit-sha>
+```
+
+Manual alternative, only if CI has not run yet:
+
+```cmd
+docker build -t %DOCKER_USER%/notes-api:%IMAGE_TAG% --build-arg APP_VERSION=%IMAGE_TAG% ./api
+docker push %DOCKER_USER%/notes-api:%IMAGE_TAG%
 ```
 
 ### 5. Container App
 
 ```cmd
 az extension add --name containerapp --upgrade
-az provider register --namespace Microsoft.App --wait
-az provider register --namespace Microsoft.OperationalInsights --wait
 
 az containerapp env create -g %RG% -n cae-notes -l %LOCATION%
 
 az containerapp create -g %RG% -n notes-api --environment cae-notes ^
-  --image docker.io/%DOCKER_USER%/notes-api:1.0 ^
+  --image docker.io/%DOCKER_USER%/notes-api:%IMAGE_TAG% ^
   --target-port 8080 --ingress external --min-replicas 0 --max-replicas 2 ^
   --secrets "database-url=postgresql://notesadmin:%PG_PASSWORD%@%PG%.postgres.database.azure.com:5432/notes?sslmode=require" ^
   --env-vars DATABASE_URL=secretref:database-url CORS_ORIGINS=%WEB_URL% "APP_MESSAGE=Hello from Azure Container Apps"
