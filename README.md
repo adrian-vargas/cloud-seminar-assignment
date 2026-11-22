@@ -80,7 +80,7 @@ set PG_PASSWORD=ChangeMe2026SomethingLong
 
 Use your own password: at least 16 characters with upper case, lower case and digits only (no symbols, so it is safe inside a URL and in `cmd`). It is typed here, never committed.
 
-Region: the Azure for Students subscription only allows `norwayeast`, `brazilsouth`, `chilecentral`, `francecentral` and `swedencentral`. The PostgreSQL `Standard_B1ms` SKU was not available in `swedencentral` (`SkuNotAvailable`), so the deployment uses `norwayeast`. The server name has a region suffix (`-no`) because a name used in a failed attempt in another region can stay reserved for a while.
+Region: the Azure for Students subscription only allows `norwayeast`, `brazilsouth`, `chilecentral`, `francecentral` and `swedencentral`. The PostgreSQL `Standard_B1ms` SKU returned `SkuNotAvailable` in `swedencentral` and in `francecentral`, and it worked in `norwayeast`, so the deployment uses `norwayeast`. The server name has a region suffix (`-no`) because the failed attempt in `francecentral` left the name `pg-notes-adrivara` reserved in that region.
 
 ### 1. Resource group
 
@@ -190,7 +190,7 @@ To save credit between work sessions: `az postgres flexible-server stop -g %RG% 
 2. **image**: build and push `docker.io/<user>/notes-api:<commit-sha>`, with `APP_VERSION=<commit-sha>`.
 3. **deploy** (optional, only if the Azure variables exist): log in to Azure with OIDC (no password stored), `az containerapp update --image ...:<sha>`, then a smoke test that waits until `/api/message` reports the new SHA.
 
-In this deployment the deploy job is skipped (no Azure variables configured); new images are deployed with `az containerapp update --image ...`.
+In this deployment the `deploy` job is skipped (no Azure variables configured); new images are deployed with `az containerapp update --image ...`.
 
 Repository settings → Secrets and variables → Actions:
 
