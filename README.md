@@ -190,6 +190,8 @@ To save credit between work sessions: `az postgres flexible-server stop -g %RG% 
 2. **image**: build and push `docker.io/<user>/notes-api:<commit-sha>`, with `APP_VERSION=<commit-sha>`.
 3. **deploy** (optional, only if the Azure variables exist): log in to Azure with OIDC (no password stored), `az containerapp update --image ...:<sha>`, then a smoke test that waits until `/api/message` reports the new SHA.
 
+In this deployment the deploy job is skipped (no Azure variables configured); new images are deployed with `az containerapp update --image ...`.
+
 Repository settings → Secrets and variables → Actions:
 
 - Variable `DOCKERHUB_USERNAME`, secret `DOCKERHUB_TOKEN` (Docker Hub personal access token, Read & Write).
@@ -206,3 +208,22 @@ az ad app federated-credential create --id <APP_ID> --parameters infra/github-oi
 ```
 
 The role is scoped to the resource group only, and the federated credential trusts only the `main` branch of this repository.
+
+## Deployed version
+
+- Image: `docker.io/adrivara/notes-api:8410dba473102d7ea555c022075b3efa2169b2a8`
+- Region: Norway East (resource group `rg-notes`, deleted after grading)
+
+## Screenshots
+
+| Description | Image |
+|---|---|
+| Resource group | ![Resource group](screenshots/01-resource-group.png) |
+| Container App | ![Container App](screenshots/02a-containerapp-overview.png) |
+| Secret (value hidden) | ![Secret (value hidden)](screenshots/02b-containerapp-secrets.png) |
+| Revisions | ![Revisions](screenshots/03-containerapp-revisions.png) |
+| PostgreSQL | ![PostgreSQL](screenshots/04-postgres-overview.png) |
+| Static website | ![Static website](screenshots/05-storage-static-website.png) |
+| App working | ![App working](screenshots/06-app-working.png) |
+| GitHub Actions | ![GitHub Actions](screenshots/07-github-actions.jpeg) |
+| Docker Hub | ![Docker Hub](screenshots/08-dockerhub.jpeg) |
