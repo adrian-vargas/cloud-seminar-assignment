@@ -227,3 +227,22 @@ The role is scoped to the resource group only, and the federated credential trus
 | App working | ![App working](screenshots/06-app-working.png) |
 | GitHub Actions | ![GitHub Actions](screenshots/07-github-actions.jpeg) |
 | Docker Hub | ![Docker Hub](screenshots/08-dockerhub.jpeg) |
+
+## Problems encountered
+
+| Problem | Diagnosis | Fix |
+|---|---|---|
+| `MissingSubscriptionRegistration` creating PostgreSQL | A new subscription has resource providers disabled | `az provider register` for PostgreSQL, Storage, App and OperationalInsights (step 1b) |
+| `SkuNotAvailable` for `Standard_B1ms` in `swedencentral` and `francecentral` | The Azure for Students policy allows only 5 regions (`az policy assignment list`) | Deployed everything in `norwayeast` |
+| `InvalidResourceLocation`: name already exists in `francecentral` | The failed attempt kept the server name reserved in that region | New server name `pg-notes-adrivara-no` |
+| `--database-name` rejected by `flexible-server create` | In current Azure CLI it only applies to elastic clusters | Separate `az postgres flexible-server db create` (step 2) |
+
+## What I would change for production
+
+| Today (assignment) | Production |
+|---|---|
+| Connection string as a Container Apps secret (GOOD) | Key Vault + managed identity (BEST) |
+| PostgreSQL reachable from Azure services, TLS required | Private network (VNet): the database is never public |
+| CI builds and pushes the image; deploy is one `az` command | Continuous Deployment with OIDC + smoke test; canary with revision weights |
+| `/livez` and `/readyz` endpoints, logs to stdout | Health probes configured; OpenTelemetry and RED alerts |
+| Burstable B1ms, scale 0–2 replicas | General Purpose + high availability, min replicas 1, budget alert, Terraform |
