@@ -246,3 +246,7 @@ The role is scoped to the resource group only, and the federated credential trus
 | CI builds and pushes the image; deploy is one `az` command | Continuous Deployment with OIDC + smoke test; canary with revision weights |
 | `/livez` and `/readyz` endpoints, logs to stdout | Health probes configured; OpenTelemetry and RED alerts |
 | Burstable B1ms, scale 0–2 replicas | General Purpose + high availability, min replicas 1, budget alert, Terraform |
+
+## Video
+
+https://youtu.be/Mj6R-joZ5r0
