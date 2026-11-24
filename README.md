@@ -212,7 +212,7 @@ The role is scoped to the resource group only, and the federated credential trus
 ## Deployed version
 
 - Image: `docker.io/adrivara/notes-api:8410dba473102d7ea555c022075b3efa2169b2a8`
-- Region: Norway East (resource group `rg-notes`, deleted after grading)
+- Region: Norway East (resource group `rg-notes`, deleted after submission)
 
 ## Screenshots
 
